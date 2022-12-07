@@ -25,18 +25,18 @@ pub fn end(_game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
     info!("GAME OVER");
 }
 
-fn prevent_backwards(head: &Coord, neck: &Coord, move_list: HashMap<_, _>) {
+fn prevent_backwards(head: &Coord, neck: &Coord, is_move_safe: &mut HashMap<&str, bool>) {
     if neck.x < head.x { // Neck is left of head, don't move left
-        move_list.insert("left", false);
+        is_move_safe.insert("left", false);
 
     } else if neck.x > head.x { // Neck is right of head, don't move right
-        move_list.insert("right", false);
+        is_move_safe.insert("right", false);
 
     } else if neck.y < head.y { // Neck is below head, don't move down
-        move_list.insert("down", false);
+        is_move_safe.insert("down", false);
     
     } else if neck.y > head.y { // Neck is above head, don't move up
-        move_list.insert("up", false);
+        is_move_safe.insert("up", false);
     }
 }
 
@@ -55,11 +55,11 @@ pub fn get_move(_game: &Game, turn: &u32, _board: &Board, you: &Battlesnake) -> 
     let my_head = &you.body[0]; // Coordinates of your head
     let my_neck = &you.body[1]; // Coordinates of your "neck"
     
-    prevent_backwards(my_head, my_neck, is_move_safe);
+    prevent_backwards(my_head, my_neck, &mut is_move_safe);
 
     // TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
-    let board_width = &_board.width;
-    let board_height = &_board.height;
+    // let board_width = &_board.width;
+    //let board_height = &_board.height;
 
 
 
