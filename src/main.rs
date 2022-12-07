@@ -6,7 +6,7 @@ use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::serde::{json::Json, Deserialize};
 use serde::Serialize;
-use serde_json::{Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 
@@ -19,13 +19,13 @@ mod logic;
 pub struct Game {
     id: String,
     ruleset: HashMap<String, Value>,
-    timeout: u32,
+    timeout: i32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Board {
-    height: u32,
-    width: u32,
+    height: i32,
+    width: i32,
     food: Vec<Coord>,
     snakes: Vec<Battlesnake>,
     hazards: Vec<Coord>,
@@ -35,24 +35,24 @@ pub struct Board {
 pub struct Battlesnake {
     id: String,
     name: String,
-    health: u32,
+    health: i32,
     body: Vec<Coord>,
     head: Coord,
-    length: u32,
+    length: i32,
     latency: String,
     shout: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Coord {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GameState {
     game: Game,
-    turn: u32,
+    turn: i32,
     board: Board,
     you: Battlesnake,
 }
