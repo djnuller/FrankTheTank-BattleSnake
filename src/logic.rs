@@ -118,6 +118,37 @@ fn prevent_other_snakes(head: &Coord, board: &Board, is_move_safe: &mut HashMap<
     }
 }
 
+fn prevent_hazards(head: &Coord, board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
+    if Some(&board.hazards).is_some() {
+        for (_i, hazards) in board.hazards.iter().enumerate() {
+            if hazards.eq(&Coord {
+                x: head.x + 1,
+                y: head.y,
+            }) {
+                is_move_safe.insert("right", false);
+            }
+            if hazards.eq(&Coord {
+                x: head.x - 1,
+                y: head.y,
+            }) {
+                is_move_safe.insert("left", false);
+            }
+            if hazards.eq(&Coord {
+                x: head.x,
+                y: head.y + 1,
+            }) {
+                is_move_safe.insert("up", false);
+            }
+            if hazards.eq(&Coord {
+                x: head.x,
+                y: head.y - 1,
+            }) {
+                is_move_safe.insert("down", false);
+            }
+        }
+    }
+}
+
 fn find_nearest_food(head: &Coord, food: &Vec<Coord>) -> Coord {
     let mut nearest_food: Coord = Coord { x: 0, y: 0 };
     let mut shortest_distance: usize = 999;
@@ -195,6 +226,8 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     log_moves("prevent_walls", &mut is_move_safe);
     prevent_other_snakes(head, _board, &mut is_move_safe);
     log_moves("prevent_other_snakes", &mut is_move_safe);
+    prevent_hazards(head, _board, &mut is_move_safe);
+    log_moves("prevent_hazards", &mut is_move_safe);
     let suggested_best_move = suggested_best_move(head, &_board.food).unwrap_or("");
     info!("suggested_best_move : {:?}", suggested_best_move);
     // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
