@@ -10,10 +10,10 @@ pub fn info() -> Value {
 
     return json!({
         "apiversion": "1",
-        "author": "Djnuller", // TODO: Your Battlesnake Username
-        "color": "#FFFF33", // TODO: Choose color
-        "head": "default", // TODO: Choose head
-        "tail": "default", // TODO: Choose tail
+        "author": "Djnuller",
+        "color": "#FFFF33",
+        "head": "default",
+        "tail": "default",
     });
 }
 
@@ -62,20 +62,48 @@ fn prevent_self_destruction(
 ) {
     if _body.contains(&Coord { x: head.x + 1, y: head.y }) {
         info!("cant move right");
-            is_move_safe.insert("right", false);
+        is_move_safe.insert("right", false);
     }
     if _body.contains(&Coord { x: head.x - 1, y: head.y }) {
         info!("cant move left");
-            is_move_safe.insert("left", false);
+        is_move_safe.insert("left", false);
     }
     if _body.contains(&Coord { x: head.x, y: head.y + 1}) {
         info!("cant move up");
-            is_move_safe.insert("up", false);
+        is_move_safe.insert("up", false);
     }
     if _body.contains(&Coord { x: head.x, y: head.y - 1}) {
         info!("cant move down");
-            is_move_safe.insert("down", false);
+        is_move_safe.insert("down", false);
     }
+}
+
+fn prevent_other_snakes(
+    head: &Coord, 
+    board: &Board, 
+    is_move_safe: &mut HashMap<&str, bool>
+) {
+    if Some(&board.snakes).is_some() {
+        for (_i, snake) in board.snakes.iter().enumerate() {
+            if snake.body.contains(&Coord { x: head.x + 1, y: head.y }) {
+                info!("cant move right");
+                is_move_safe.insert("right", false);
+            }
+            if snake.body.contains(&Coord { x: head.x - 1, y: head.y }) {
+                info!("cant move left");
+                is_move_safe.insert("left", false);
+            }
+            if snake.body.contains(&Coord { x: head.x, y: head.y + 1}) {
+                info!("cant move up");
+                is_move_safe.insert("up", false);
+            }
+            if snake.body.contains(&Coord { x: head.x, y: head.y - 1}) {
+                info!("cant move down");
+                is_move_safe.insert("down", false);
+            }
+        }
+    }
+
 }
 
 fn log_moves(method: &str, is_move_safe: &mut HashMap<&str, bool>) {
@@ -116,6 +144,8 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     log_moves("prevent_self_destruction", &mut is_move_safe);
     prevent_walls(head, _board, &mut is_move_safe);
     log_moves("prevent_walls", &mut is_move_safe);
+    prevent_other_snakes(head, _board, &mut is_move_safe);
+    log_moves("prevent_other_snakes", &mut is_move_safe);
     // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
 
