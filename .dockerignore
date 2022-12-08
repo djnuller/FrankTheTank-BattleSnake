@@ -1,2 +1,4 @@
 # flyctl launch added from .gitignore
 target
+/target
+./target

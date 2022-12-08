@@ -12,8 +12,8 @@ pub fn info() -> Value {
         "apiversion": "1",
         "author": "Djnuller",
         "color": "#FFFF33",
-        "head": "default",
-        "tail": "default",
+        "head": "snowman",
+        "tail": "weight",
     });
 }
 
