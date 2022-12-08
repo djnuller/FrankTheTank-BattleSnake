@@ -60,30 +60,21 @@ fn prevent_self_destruction(
     _body: &Vec<Coord>,
     is_move_safe: &mut HashMap<&str, bool>,
 ) {
-    // check if body is to the left or right to the head
-    let _skip = 0;
-    for (i, body_coord) in _body.iter().enumerate() {
-        if i == _skip {
-            continue;
-        }
-        info!(
-            "body_coord x: {}, y: {}. head_coord x: {}, y: {}",
-            body_coord.x, body_coord.y, head.x, head.y
-        );
-
-        if head.x - 1 == body_coord.y && head.y - 1 == body_coord.x {
-            info!("cant move left");
-            is_move_safe.insert("left", false);
-        } else if head.x + 1 == body_coord.y && head.y + 1 == body_coord.x {
-            info!("cant move right");
+    if _body.contains(&Coord { x: head.x + 1, y: head.y }) {
+        info!("cant move right");
             is_move_safe.insert("right", false);
-        } else if head.y - 1 == body_coord.x && head.x - 1 == body_coord.y {
-            info!("cant move down");
-            is_move_safe.insert("down", false);
-        } else if head.y + 1 == body_coord.x && head.x + 1 == body_coord.y {
-            info!("cant move up");
+    }
+    if _body.contains(&Coord { x: head.x - 1, y: head.y }) {
+        info!("cant move left");
+            is_move_safe.insert("left", false);
+    }
+    if _body.contains(&Coord { x: head.x, y: head.y + 1}) {
+        info!("cant move up");
             is_move_safe.insert("up", false);
-        }
+    }
+    if _body.contains(&Coord { x: head.x, y: head.y - 1}) {
+        info!("cant move up");
+            is_move_safe.insert("down", false);
     }
 }
 

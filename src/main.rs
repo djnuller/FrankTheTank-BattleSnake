@@ -49,6 +49,12 @@ pub struct Coord {
     y: i32,
 }
 
+impl PartialEq for Coord {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GameState {
     game: Game,
