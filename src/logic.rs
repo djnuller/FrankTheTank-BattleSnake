@@ -87,6 +87,17 @@ fn prevent_self_destruction(
     }
 }
 
+fn log_moves(method: &str, is_move_safe: &mut HashMap<&str, bool>) {
+    info!(
+        "is_move_safe after {} up ({}), down ({}), left ({}), right ({})",
+        method,
+        bool_to_str(is_move_safe.get("up")),
+        bool_to_str(is_move_safe.get("down")),
+        bool_to_str(is_move_safe.get("left")),
+        bool_to_str(is_move_safe.get("right"))
+    );
+}
+
 fn bool_to_str(optional_boolean: Option<&bool>) -> &'static str {
     if optional_boolean.unwrap().clone() {
         return "true";
@@ -109,29 +120,11 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     let neck = &you.body[1]; // Coordinates of your "neck"
 
     prevent_backwards(head, neck, &mut is_move_safe);
-    info!(
-        "is_move_safe after prevent_backwards up ({}), down ({}), left ({}), right ({})",
-        bool_to_str(is_move_safe.get("up")),
-        bool_to_str(is_move_safe.get("down")),
-        bool_to_str(is_move_safe.get("left")),
-        bool_to_str(is_move_safe.get("right"))
-    );
+    log_moves("prevent_backwards", &mut is_move_safe);
     prevent_self_destruction(head, &you.body, &mut is_move_safe);
-    info!(
-        "is_move_safe after prevent_self_destruction up ({}), down ({}), left ({}), right ({})",
-        bool_to_str(is_move_safe.get("up")),
-        bool_to_str(is_move_safe.get("down")),
-        bool_to_str(is_move_safe.get("left")),
-        bool_to_str(is_move_safe.get("right"))
-    );
+    log_moves("prevent_self_destruction", &mut is_move_safe);
     prevent_walls(head, _board, &mut is_move_safe);
-    info!(
-        "is_move_safe after prevent_walls up ({}), down ({}), left ({}), right ({})",
-        bool_to_str(is_move_safe.get("up")),
-        bool_to_str(is_move_safe.get("down")),
-        bool_to_str(is_move_safe.get("left")),
-        bool_to_str(is_move_safe.get("right"))
-    );
+    log_moves("prevent_walls", &mut is_move_safe);
     // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
 
