@@ -1,4 +1,5 @@
 use log::info;
+use pathfinding::prelude::bfs;
 use rand::seq::SliceRandom;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -60,50 +61,97 @@ fn prevent_self_destruction(
     _body: &Vec<Coord>,
     is_move_safe: &mut HashMap<&str, bool>,
 ) {
-    if _body.contains(&Coord { x: head.x + 1, y: head.y }) {
-        info!("cant move right");
+    if _body.contains(&Coord {
+        x: head.x + 1,
+        y: head.y,
+    }) {
         is_move_safe.insert("right", false);
     }
-    if _body.contains(&Coord { x: head.x - 1, y: head.y }) {
-        info!("cant move left");
+    if _body.contains(&Coord {
+        x: head.x - 1,
+        y: head.y,
+    }) {
         is_move_safe.insert("left", false);
     }
-    if _body.contains(&Coord { x: head.x, y: head.y + 1}) {
-        info!("cant move up");
+    if _body.contains(&Coord {
+        x: head.x,
+        y: head.y + 1,
+    }) {
         is_move_safe.insert("up", false);
     }
-    if _body.contains(&Coord { x: head.x, y: head.y - 1}) {
-        info!("cant move down");
+    if _body.contains(&Coord {
+        x: head.x,
+        y: head.y - 1,
+    }) {
         is_move_safe.insert("down", false);
     }
 }
 
-fn prevent_other_snakes(
-    head: &Coord, 
-    board: &Board, 
-    is_move_safe: &mut HashMap<&str, bool>
-) {
+fn prevent_other_snakes(head: &Coord, board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
     if Some(&board.snakes).is_some() {
         for (_i, snake) in board.snakes.iter().enumerate() {
-            if snake.body.contains(&Coord { x: head.x + 1, y: head.y }) {
-                info!("cant move right");
+            if snake.body.contains(&Coord {
+                x: head.x + 1,
+                y: head.y,
+            }) {
                 is_move_safe.insert("right", false);
             }
-            if snake.body.contains(&Coord { x: head.x - 1, y: head.y }) {
-                info!("cant move left");
+            if snake.body.contains(&Coord {
+                x: head.x - 1,
+                y: head.y,
+            }) {
                 is_move_safe.insert("left", false);
             }
-            if snake.body.contains(&Coord { x: head.x, y: head.y + 1}) {
-                info!("cant move up");
+            if snake.body.contains(&Coord {
+                x: head.x,
+                y: head.y + 1,
+            }) {
                 is_move_safe.insert("up", false);
             }
-            if snake.body.contains(&Coord { x: head.x, y: head.y - 1}) {
-                info!("cant move down");
+            if snake.body.contains(&Coord {
+                x: head.x,
+                y: head.y - 1,
+            }) {
                 is_move_safe.insert("down", false);
             }
         }
     }
+}
 
+fn find_nearest_food(head: &Coord, food: &Vec<Coord>) -> Coord {
+    let mut nearest_food: Coord = Coord { x: 0, y: 0 };
+    let mut shortest_distance: usize = 999;
+    for (_i, _food) in food.iter().enumerate() {
+        let _result = bfs(head, |p| p.successors(), |p| *p == _food.clone());
+        if _result.is_some() {
+            let result = _result.unwrap();
+            if _i == 0 {
+                shortest_distance = result.len();
+                continue;
+            }
+
+            if result.len() < shortest_distance {
+                shortest_distance = result.len();
+                nearest_food = _food.clone();
+            }
+        }
+    }
+    return nearest_food;
+}
+
+fn suggested_best_move(head: &Coord, food: &Vec<Coord>) -> Option<&'static str> {
+    let nearest_food = find_nearest_food(head, food);
+    if head.x > nearest_food.x {
+        return Some("left");
+    } else if head.x < nearest_food.x {
+        return Some("right");
+    } else if head.y > nearest_food.y {
+        return Some("down");
+    } else if head.y < nearest_food.y {
+        return Some("up");
+    }
+
+    return None;
 }
 
 fn log_moves(method: &str, is_move_safe: &mut HashMap<&str, bool>) {
@@ -126,6 +174,7 @@ fn bool_to_str(optional_boolean: Option<&bool>) -> &'static str {
 
 // See https://docs.battlesnake.com/api/example-move for available data
 pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> Value {
+    let start = std::time::Instant::now();
     let mut is_move_safe: HashMap<_, _> = vec![
         ("up", true),
         ("down", true),
@@ -146,6 +195,8 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     log_moves("prevent_walls", &mut is_move_safe);
     prevent_other_snakes(head, _board, &mut is_move_safe);
     log_moves("prevent_other_snakes", &mut is_move_safe);
+    let suggested_best_move = suggested_best_move(head, &_board.food).unwrap_or("");
+    info!("suggested_best_move : {:?}", suggested_best_move);
     // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
 
@@ -156,12 +207,31 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
 
+    let mut chosen = "down"; // default down
+    if !suggested_best_move.eq_ignore_ascii_case("") && safe_moves.contains(&suggested_best_move) {
+        chosen = suggested_best_move;
+    } else if safe_moves.len() > 0 {
+        chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
+    }
     // Choose a random move from the safe ones
-    let chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
 
     // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
     // let food = &board.food;
-
+    let end = std::time::Instant::now();
+    let duration = end - start;
+    info!("Logic took {}ns", duration.as_nanos());
     info!("MOVE {}: {}", turn, chosen);
     return json!({ "move": chosen });
+}
+
+impl Coord {
+    fn successors(&self) -> Vec<Coord> {
+        let &Coord { x, y } = self;
+        vec![
+            Coord { x: x + 1, y: y },
+            Coord { x: x - 1, y: y },
+            Coord { x: x, y: y + 1 },
+            Coord { x: x, y: y - 1 },
+        ]
+    }
 }
