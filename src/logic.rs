@@ -73,7 +73,7 @@ fn prevent_self_destruction(
             is_move_safe.insert("up", false);
     }
     if _body.contains(&Coord { x: head.x, y: head.y - 1}) {
-        info!("cant move up");
+        info!("cant move down");
             is_move_safe.insert("down", false);
     }
 }
