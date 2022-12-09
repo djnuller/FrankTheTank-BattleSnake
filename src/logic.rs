@@ -46,12 +46,12 @@ fn prevent_walls(head: &Coord, _board: &Board, is_move_safe: &mut HashMap<&str, 
     // check if head is close to bottom or top, left or right
     if head.x == 0 {
         is_move_safe.insert("left", false);
-    } else if head.x == _board.width - 1 {
+    } else if head.x + 1 == _board.width {
         is_move_safe.insert("right", false);
     }
     if head.y == 0 {
         is_move_safe.insert("down", false);
-    } else if head.y == _board.height - 1 {
+    } else if head.y + 1 == _board.height {
         is_move_safe.insert("up", false);
     }
 }
@@ -156,11 +156,6 @@ fn find_nearest_food(head: &Coord, food: &Vec<Coord>) -> Coord {
         let _result = bfs(head, |p| p.successors(), |p| *p == _food.clone());
         if _result.is_some() {
             let result = _result.unwrap();
-            if _i == 0 {
-                shortest_distance = result.len();
-                continue;
-            }
-
             if result.len() < shortest_distance {
                 shortest_distance = result.len();
                 nearest_food = _food.clone();
