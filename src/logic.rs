@@ -1,4 +1,5 @@
 use log::info;
+use pathfinding::prelude::astar;
 use pathfinding::prelude::bfs;
 use rand::seq::SliceRandom;
 use serde_json::{json, Value};
@@ -42,7 +43,49 @@ fn prevent_backwards(head: &Coord, neck: &Coord, is_move_safe: &mut HashMap<&str
     }
 }
 
-fn find_nearest_food(
+fn find_nearest_food_astar(
+    head: &Coord,
+    food: &Vec<Coord>,
+    hazards: &Vec<Coord>,
+    battlesnakes: &Vec<Battlesnake>,
+    body: &Vec<Coord>,
+    _board: &Board,
+) -> Option<Vec<Coord>> {
+    let mut best_path: Vec<Vec<Coord>> = Vec::new();
+    if food.is_empty() {
+        let _result = astar(
+            head,
+            |p| p.neighbours(hazards, battlesnakes, body, _board),
+            |p| p.distance(&body[body.len() - 1]) / 3,
+            |p| *p == body[body.len() - 1],
+        );
+
+        if _result.is_some() {
+            let (result, _) = _result.unwrap();
+            best_path.push(result);
+        }
+    }
+    for (_i, _food) in food.iter().enumerate() {
+        let _result = astar(
+            head,
+            |p| p.neighbours(hazards, battlesnakes, body, _board),
+            |p| p.distance(&body[body.len() - 1]) / 3,
+            |p| *p == *_food,
+        );
+
+        if _result.is_some() {
+            let (result, _) = _result.unwrap();
+            best_path.push(result);
+        }
+    }
+    if best_path.is_empty() {
+        return None;
+    }
+    best_path.sort_by(|a, b| a.len().cmp(&b.len()));
+    return Some(best_path[0].clone());
+}
+
+fn find_nearest_food_bfs(
     head: &Coord,
     food: &Vec<Coord>,
     hazards: &Vec<Coord>,
@@ -88,7 +131,7 @@ fn suggested_best_move(
     body: &Vec<Coord>,
     _board: &Board,
 ) -> Option<Vec<&'static str>> {
-    let nearest_food = find_nearest_food(head, food, hazards, battlesnakes, body, _board);
+    let nearest_food = find_nearest_food_astar(head, food, hazards, battlesnakes, body, _board);
     if nearest_food.is_some() {
         let path = nearest_food.unwrap();
         info!("Path contains {:?}", path);
@@ -137,9 +180,11 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     ]
     .into_iter()
     .collect();
-
-    let head = &you.body[0]; // Coordinates of your head
-    let neck = &you.body[1]; // Coordinates of your "neck"
+    // remove tail
+    let body = &mut you.body.clone();
+    body.pop();
+    let head = &body[0]; // Coordinates of your head
+    let neck = &body[1]; // Coordinates of your "neck"
 
     prevent_backwards(head, neck, &mut is_move_safe);
 
@@ -148,16 +193,24 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
         &_board.food,
         &_board.hazards,
         &_board.snakes,
-        &you.body,
+        &body,
         _board,
     );
     info!("suggested_best_move : {:?}", suggested_best_move);
+    let _snakes = &_board
+        .snakes
+        .clone()
+        .into_iter()
+        .filter(|s| !s.id.eq(&you.id) && !s.name.eq(&you.name))
+        .collect::<Vec<Battlesnake>>();
+
+    info!("snakes! {:?}", _snakes);
 
     head.prevent_hazards(&_board.hazards, &mut is_move_safe);
     log_moves(head, "prevent_hazards", &mut is_move_safe);
-    head.prevent_other_snakes(&_board.snakes, &mut is_move_safe);
+    head.prevent_other_snakes(_snakes, &mut is_move_safe);
     log_moves(head, "prevent_other_snakes", &mut is_move_safe);
-    head.prevent_self_destruction(&you.body, &mut is_move_safe);
+    head.prevent_self_destruction(&body, &mut is_move_safe);
     log_moves(head, "prevent_self_destruction", &mut is_move_safe);
     head.prevent_walls(_board, &mut is_move_safe);
     log_moves(head, "prevent_walls", &mut is_move_safe);
@@ -182,10 +235,6 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     if safe_moves.len() > 0 && !safe_moves.contains(&chosen) {
         chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
     }
-    // Choose a random move from the safe ones
-
-    // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-    // let food = &board.food;
     let end = std::time::Instant::now();
     let duration = end - start;
     info!("Logic took {}ns", duration.as_nanos());

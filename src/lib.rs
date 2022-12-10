@@ -23,7 +23,7 @@ pub struct Board {
     pub hazards: Vec<Coord>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Battlesnake {
     pub id: String,
     pub name: String,
@@ -73,6 +73,40 @@ impl Coord {
             .collect::<Vec<Coord>>()
     }
 
+    pub fn neighbours(
+        &self,
+        hazards: &Vec<Coord>,
+        battlesnakes: &Vec<Battlesnake>,
+        body: &Vec<Coord>,
+        _board: &Board,
+    ) -> Vec<(Coord, usize)> {
+        let &Coord { x: _, y: _ } = self;
+        let mut is_move_safe: HashMap<_, _> = vec![
+            ("up", true),
+            ("down", true),
+            ("left", true),
+            ("right", true),
+        ]
+        .into_iter()
+        .collect();
+        // ugly but for performance
+        Coord::prevent_walls(self, &_board, &mut is_move_safe);
+        Coord::prevent_other_snakes(self, battlesnakes, &mut is_move_safe);
+        Coord::prevent_hazards(self, hazards, &mut is_move_safe);
+        Coord::prevent_self_destruction(self, body, &mut is_move_safe);
+
+        // Coord::get_succesors(&self, hazards, battlesnakes, body, _board)
+        is_move_safe
+            .into_iter()
+            .filter(|&(_, v)| v)
+            .map(|(k, _)| (Coord::get_coord_from_string(self, k), 1))
+            .collect()
+    }
+
+    pub fn distance(&self, other: &Coord) -> usize {
+        ((self.x - other.x).abs() + (self.y - other.y).abs()) as usize
+    }
+
     pub fn get_succesors(
         &self,
         hazards: &Vec<Coord>,
@@ -81,8 +115,8 @@ impl Coord {
         _board: &Board,
     ) -> Vec<Coord> {
         let mut successors = Vec::new();
-        for dx in 0.._board.width {
-            for dy in 0.._board.height {
+        for dx in 0..8 {
+            for dy in 0..8 {
                 // Omit diagonal moves (and moving to the same position)
                 if (dx + dy) != 1 {
                     continue;
