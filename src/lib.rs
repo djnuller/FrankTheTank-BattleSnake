@@ -72,20 +72,19 @@ impl Coord {
             .map(|(k, _)| Coord::get_coord_from_string(self, k))
             .collect::<Vec<Coord>>()
     }
-    /*
-    fn get_succesors(
+
+    pub fn get_succesors(
         &self,
         hazards: &Vec<Coord>,
         battlesnakes: &Vec<Battlesnake>,
         body: &Vec<Coord>,
         _board: &Board,
     ) -> Vec<Coord> {
-        let &Coord { x: _, y: _ } = self;
         let mut successors = Vec::new();
-        for dx in 0.._board.height {
-            for dy in 0.._board.width {
+        for dx in 0.._board.width {
+            for dy in 0.._board.height {
                 // Omit diagonal moves (and moving to the same position)
-                if (dx + dy).abs() != 1 {
+                if (dx + dy) != 1 {
                     continue;
                 }
                 let new_position = &Coord {
@@ -107,7 +106,7 @@ impl Coord {
                 ]
                 .into_iter()
                 .collect();
-                // ugly but for performance
+
                 Coord::prevent_walls(new_position, &_board, &mut is_move_safe);
                 Coord::prevent_other_snakes(new_position, battlesnakes, &mut is_move_safe);
                 Coord::prevent_hazards(new_position, hazards, &mut is_move_safe);
@@ -120,6 +119,7 @@ impl Coord {
                     .collect::<Vec<_>>()
                     .is_empty()
                 {
+                    info!("Empty go further!");
                     continue;
                 }
 
@@ -137,38 +137,40 @@ impl Coord {
             }
         }
         successors
-    }*/
+    }
 
-    fn prevent_walls(head: &Coord, _board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
-        if head.x == 0 {
+    pub fn prevent_walls(&self, _board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
+        if self.x == 0 {
             is_move_safe.insert("left", false);
-        } else if head.x == _board.width - 1 {
+        }
+        if self.x == _board.width - 1 {
             is_move_safe.insert("right", false);
         }
-        if head.y == 0 {
+        if self.y == 0 {
             is_move_safe.insert("down", false);
-        } else if head.y == _board.height - 1 {
+        }
+        if self.y == _board.height - 1 {
             is_move_safe.insert("up", false);
         }
     }
 
-    fn get_coord_from_string(head: &Coord, _move: &str) -> Coord {
+    fn get_coord_from_string(&self, _move: &str) -> Coord {
         let moves = vec![
             Coord {
-                x: head.x + 1,
-                y: head.y,
+                x: self.x + 1,
+                y: self.y,
             }, // right 0
             Coord {
-                x: head.x - 1,
-                y: head.y,
+                x: self.x - 1,
+                y: self.y,
             }, // left 1
             Coord {
-                x: head.x,
-                y: head.y + 1,
+                x: self.x,
+                y: self.y + 1,
             }, // up 2
             Coord {
-                x: head.x,
-                y: head.y - 1,
+                x: self.x,
+                y: self.y - 1,
             }, // down 3
         ];
         match _move {
@@ -180,93 +182,93 @@ impl Coord {
         }
     }
 
-    fn prevent_self_destruction(
-        head: &Coord,
+    pub fn prevent_self_destruction(
+        &self,
         _body: &Vec<Coord>,
         is_move_safe: &mut HashMap<&str, bool>,
     ) {
         if _body.contains(&Coord {
-            x: head.x + 1,
-            y: head.y,
+            x: self.x + 1,
+            y: self.y,
         }) {
             is_move_safe.insert("right", false);
         }
         if _body.contains(&Coord {
-            x: head.x - 1,
-            y: head.y,
+            x: self.x - 1,
+            y: self.y,
         }) {
             is_move_safe.insert("left", false);
         }
         if _body.contains(&Coord {
-            x: head.x,
-            y: head.y + 1,
+            x: self.x,
+            y: self.y + 1,
         }) {
             is_move_safe.insert("up", false);
         }
         if _body.contains(&Coord {
-            x: head.x,
-            y: head.y - 1,
+            x: self.x,
+            y: self.y - 1,
         }) {
             is_move_safe.insert("down", false);
         }
     }
 
-    fn prevent_hazards(head: &Coord, hazards: &Vec<Coord>, is_move_safe: &mut HashMap<&str, bool>) {
+    pub fn prevent_hazards(&self, hazards: &Vec<Coord>, is_move_safe: &mut HashMap<&str, bool>) {
         for (_i, hazards) in hazards.iter().enumerate() {
             if hazards.eq(&Coord {
-                x: head.x + 1,
-                y: head.y,
+                x: self.x + 1,
+                y: self.y,
             }) {
                 is_move_safe.insert("right", false);
             }
             if hazards.eq(&Coord {
-                x: head.x - 1,
-                y: head.y,
+                x: self.x - 1,
+                y: self.y,
             }) {
                 is_move_safe.insert("left", false);
             }
             if hazards.eq(&Coord {
-                x: head.x,
-                y: head.y + 1,
+                x: self.x,
+                y: self.y + 1,
             }) {
                 is_move_safe.insert("up", false);
             }
             if hazards.eq(&Coord {
-                x: head.x,
-                y: head.y - 1,
+                x: self.x,
+                y: self.y - 1,
             }) {
                 is_move_safe.insert("down", false);
             }
         }
     }
 
-    fn prevent_other_snakes(
-        head: &Coord,
+    pub fn prevent_other_snakes(
+        &self,
         snakes: &Vec<Battlesnake>,
         is_move_safe: &mut HashMap<&str, bool>,
     ) {
         for (_i, snake) in snakes.iter().enumerate() {
             if snake.body.contains(&Coord {
-                x: head.x + 1,
-                y: head.y,
+                x: self.x + 1,
+                y: self.y,
             }) {
                 is_move_safe.insert("right", false);
             }
             if snake.body.contains(&Coord {
-                x: head.x - 1,
-                y: head.y,
+                x: self.x - 1,
+                y: self.y,
             }) {
                 is_move_safe.insert("left", false);
             }
             if snake.body.contains(&Coord {
-                x: head.x,
-                y: head.y + 1,
+                x: self.x,
+                y: self.y + 1,
             }) {
                 is_move_safe.insert("up", false);
             }
             if snake.body.contains(&Coord {
-                x: head.x,
-                y: head.y - 1,
+                x: self.x,
+                y: self.y - 1,
             }) {
                 is_move_safe.insert("down", false);
             }

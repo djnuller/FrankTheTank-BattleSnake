@@ -42,51 +42,6 @@ fn prevent_backwards(head: &Coord, neck: &Coord, is_move_safe: &mut HashMap<&str
     }
 }
 
-fn prevent_walls(head: &Coord, _board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
-    // check if head is close to bottom or top, left or right
-    if head.x == 0 {
-        is_move_safe.insert("left", false);
-    } else if head.x + 1 == _board.width {
-        is_move_safe.insert("right", false);
-    }
-    if head.y == 0 {
-        is_move_safe.insert("down", false);
-    } else if head.y + 1 == _board.height {
-        is_move_safe.insert("up", false);
-    }
-}
-
-fn prevent_self_destruction(
-    head: &Coord,
-    _body: &Vec<Coord>,
-    is_move_safe: &mut HashMap<&str, bool>,
-) {
-    if _body.contains(&Coord {
-        x: head.x + 1,
-        y: head.y,
-    }) {
-        is_move_safe.insert("right", false);
-    }
-    if _body.contains(&Coord {
-        x: head.x - 1,
-        y: head.y,
-    }) {
-        is_move_safe.insert("left", false);
-    }
-    if _body.contains(&Coord {
-        x: head.x,
-        y: head.y + 1,
-    }) {
-        is_move_safe.insert("up", false);
-    }
-    if _body.contains(&Coord {
-        x: head.x,
-        y: head.y - 1,
-    }) {
-        is_move_safe.insert("down", false);
-    }
-}
-
 fn find_nearest_food(
     head: &Coord,
     food: &Vec<Coord>,
@@ -95,22 +50,16 @@ fn find_nearest_food(
     body: &Vec<Coord>,
     _board: &Board,
 ) -> Option<Vec<Coord>> {
-    let mut best_path: Option<Vec<Coord>> = None;
-    let mut shortest_distance: usize = 999;
+    let mut best_path: Vec<Vec<Coord>> = Vec::new();
     if food.is_empty() {
         let _result = bfs(
             head,
             |p| p.successors(hazards, battlesnakes, body, _board),
             |p| *p == body[body.len()], // hunt tail
         );
-        info!("result {:?}", _result);
         if _result.is_some() {
             let result = _result.unwrap();
-
-            if result.len() < shortest_distance {
-                shortest_distance = result.len();
-                best_path = Some(result);
-            }
+            best_path.push(result);
         }
     }
     for (_i, _food) in food.iter().enumerate() {
@@ -119,20 +68,16 @@ fn find_nearest_food(
             |p| p.successors(hazards, battlesnakes, body, _board),
             |p| *p == _food.clone(),
         );
-        info!("result with food {:?}", _result);
         if _result.is_some() {
             let result = _result.unwrap();
-            if result.len() == shortest_distance {
-                continue;
-            }
-
-            if result.len() < shortest_distance {
-                shortest_distance = result.len();
-                best_path = Some(result);
-            }
+            best_path.push(result);
         }
     }
-    return best_path;
+    if best_path.is_empty() {
+        return None;
+    }
+    best_path.sort_by(|a, b| a.len().cmp(&b.len()));
+    return Some(best_path[0].clone());
 }
 
 fn suggested_best_move(
@@ -144,9 +89,9 @@ fn suggested_best_move(
     _board: &Board,
 ) -> Option<Vec<&'static str>> {
     let nearest_food = find_nearest_food(head, food, hazards, battlesnakes, body, _board);
-    info!("nearest_food: {:?}", nearest_food);
     if nearest_food.is_some() {
         let path = nearest_food.unwrap();
+        info!("Path contains {:?}", path);
         // take next step
         let mut made_path = Vec::new();
         for (_i, _path) in path.iter().enumerate() {
@@ -154,7 +99,8 @@ fn suggested_best_move(
                 made_path.push("left");
             } else if head.x < path[_i].x {
                 made_path.push("right");
-            } else if head.y > path[_i].y {
+            }
+            if head.y > path[_i].y {
                 made_path.push("down");
             } else if head.y < path[_i].y {
                 made_path.push("up");
@@ -168,22 +114,16 @@ fn suggested_best_move(
     return None;
 }
 
-fn log_moves(method: &str, is_move_safe: &mut HashMap<&str, bool>) {
+fn log_moves(head: &Coord, method: &str, is_move_safe: &mut HashMap<&str, bool>) {
     info!(
-        "is_move_safe after {} up ({}), down ({}), left ({}), right ({})",
+        "head: {:?} is_move_safe after {} up ({:?}), down ({:?}), left ({:?}), right ({:?})",
+        head,
         method,
-        bool_to_str(is_move_safe.get("up")),
-        bool_to_str(is_move_safe.get("down")),
-        bool_to_str(is_move_safe.get("left")),
-        bool_to_str(is_move_safe.get("right"))
+        is_move_safe.get("up"),
+        is_move_safe.get("down"),
+        is_move_safe.get("left"),
+        is_move_safe.get("right")
     );
-}
-
-fn bool_to_str(optional_boolean: Option<&bool>) -> &'static str {
-    if optional_boolean.unwrap().clone() {
-        return "true";
-    }
-    return "false";
 }
 
 // See https://docs.battlesnake.com/api/example-move for available data
@@ -202,7 +142,7 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     let neck = &you.body[1]; // Coordinates of your "neck"
 
     prevent_backwards(head, neck, &mut is_move_safe);
-    log_moves("prevent_backwards", &mut is_move_safe);
+
     let suggested_best_move = suggested_best_move(
         head,
         &_board.food,
@@ -212,9 +152,15 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
         _board,
     );
     info!("suggested_best_move : {:?}", suggested_best_move);
-    // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-    // let opponents = &board.snakes;
 
+    head.prevent_hazards(&_board.hazards, &mut is_move_safe);
+    log_moves(head, "prevent_hazards", &mut is_move_safe);
+    head.prevent_other_snakes(&_board.snakes, &mut is_move_safe);
+    log_moves(head, "prevent_other_snakes", &mut is_move_safe);
+    head.prevent_self_destruction(&you.body, &mut is_move_safe);
+    log_moves(head, "prevent_self_destruction", &mut is_move_safe);
+    head.prevent_walls(_board, &mut is_move_safe);
+    log_moves(head, "prevent_walls", &mut is_move_safe);
     // Are there any safe moves left?
     let safe_moves = is_move_safe
         .into_iter()
@@ -232,7 +178,8 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
                 break;
             }
         }
-    } else if safe_moves.len() > 0 {
+    }
+    if safe_moves.len() > 0 && !safe_moves.contains(&chosen) {
         chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
     }
     // Choose a random move from the safe ones
