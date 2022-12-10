@@ -4,7 +4,7 @@ use rand::seq::SliceRandom;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
-use crate::{Battlesnake, Board, Coord, Game};
+use starter_snake_rust::{Battlesnake, Board, Coord, Game};
 
 pub fn info() -> Value {
     info!("INFO");
@@ -87,99 +87,82 @@ fn prevent_self_destruction(
     }
 }
 
-fn prevent_other_snakes(head: &Coord, board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
-    if Some(&board.snakes).is_some() {
-        for (_i, snake) in board.snakes.iter().enumerate() {
-            if snake.body.contains(&Coord {
-                x: head.x + 1,
-                y: head.y,
-            }) {
-                is_move_safe.insert("right", false);
-            }
-            if snake.body.contains(&Coord {
-                x: head.x - 1,
-                y: head.y,
-            }) {
-                is_move_safe.insert("left", false);
-            }
-            if snake.body.contains(&Coord {
-                x: head.x,
-                y: head.y + 1,
-            }) {
-                is_move_safe.insert("up", false);
-            }
-            if snake.body.contains(&Coord {
-                x: head.x,
-                y: head.y - 1,
-            }) {
-                is_move_safe.insert("down", false);
-            }
-        }
-    }
-}
-
-fn prevent_hazards(head: &Coord, board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
-    if Some(&board.hazards).is_some() {
-        for (_i, hazards) in board.hazards.iter().enumerate() {
-            if hazards.eq(&Coord {
-                x: head.x + 1,
-                y: head.y,
-            }) {
-                is_move_safe.insert("right", false);
-            }
-            if hazards.eq(&Coord {
-                x: head.x - 1,
-                y: head.y,
-            }) {
-                is_move_safe.insert("left", false);
-            }
-            if hazards.eq(&Coord {
-                x: head.x,
-                y: head.y + 1,
-            }) {
-                is_move_safe.insert("up", false);
-            }
-            if hazards.eq(&Coord {
-                x: head.x,
-                y: head.y - 1,
-            }) {
-                is_move_safe.insert("down", false);
-            }
-        }
-    }
-}
-
-fn find_nearest_food(head: &Coord, food: &Vec<Coord>) -> Coord {
-    let mut nearest_food: Coord = Coord { x: 0, y: 0 };
+fn find_nearest_food(
+    head: &Coord,
+    food: &Vec<Coord>,
+    hazards: &Vec<Coord>,
+    battlesnakes: &Vec<Battlesnake>,
+    body: &Vec<Coord>,
+    _board: &Board,
+) -> Option<Vec<Coord>> {
+    let mut best_path: Option<Vec<Coord>> = None;
     let mut shortest_distance: usize = 999;
-    for (_i, _food) in food.iter().enumerate() {
-        let _result = bfs(head, |p| p.successors(), |p| *p == _food.clone());
+    if food.is_empty() {
+        let _result = bfs(
+            head,
+            |p| p.successors(hazards, battlesnakes, body, _board),
+            |p| *p == body[body.len()], // hunt tail
+        );
+        info!("result {:?}", _result);
         if _result.is_some() {
             let result = _result.unwrap();
-            if _i == 0 {
+
+            if result.len() < shortest_distance {
                 shortest_distance = result.len();
+                best_path = Some(result);
+            }
+        }
+    }
+    for (_i, _food) in food.iter().enumerate() {
+        let _result = bfs(
+            head,
+            |p| p.successors(hazards, battlesnakes, body, _board),
+            |p| *p == _food.clone(),
+        );
+        info!("result with food {:?}", _result);
+        if _result.is_some() {
+            let result = _result.unwrap();
+            if result.len() == shortest_distance {
                 continue;
             }
 
             if result.len() < shortest_distance {
                 shortest_distance = result.len();
-                nearest_food = _food.clone();
+                best_path = Some(result);
             }
         }
     }
-    return nearest_food;
+    return best_path;
 }
 
-fn suggested_best_move(head: &Coord, food: &Vec<Coord>) -> Option<&'static str> {
-    let nearest_food = find_nearest_food(head, food);
-    if head.x > nearest_food.x {
-        return Some("left");
-    } else if head.x < nearest_food.x {
-        return Some("right");
-    } else if head.y > nearest_food.y {
-        return Some("down");
-    } else if head.y < nearest_food.y {
-        return Some("up");
+fn suggested_best_move(
+    head: &Coord,
+    food: &Vec<Coord>,
+    hazards: &Vec<Coord>,
+    battlesnakes: &Vec<Battlesnake>,
+    body: &Vec<Coord>,
+    _board: &Board,
+) -> Option<Vec<&'static str>> {
+    let nearest_food = find_nearest_food(head, food, hazards, battlesnakes, body, _board);
+    info!("nearest_food: {:?}", nearest_food);
+    if nearest_food.is_some() {
+        let path = nearest_food.unwrap();
+        // take next step
+        let mut made_path = Vec::new();
+        for (_i, _path) in path.iter().enumerate() {
+            if head.x > path[_i].x {
+                made_path.push("left");
+            } else if head.x < path[_i].x {
+                made_path.push("right");
+            } else if head.y > path[_i].y {
+                made_path.push("down");
+            } else if head.y < path[_i].y {
+                made_path.push("up");
+            }
+        }
+        if made_path.len() > 0 {
+            return Some(made_path);
+        }
     }
 
     return None;
@@ -220,15 +203,14 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
 
     prevent_backwards(head, neck, &mut is_move_safe);
     log_moves("prevent_backwards", &mut is_move_safe);
-    prevent_self_destruction(head, &you.body, &mut is_move_safe);
-    log_moves("prevent_self_destruction", &mut is_move_safe);
-    prevent_walls(head, _board, &mut is_move_safe);
-    log_moves("prevent_walls", &mut is_move_safe);
-    prevent_other_snakes(head, _board, &mut is_move_safe);
-    log_moves("prevent_other_snakes", &mut is_move_safe);
-    prevent_hazards(head, _board, &mut is_move_safe);
-    log_moves("prevent_hazards", &mut is_move_safe);
-    let suggested_best_move = suggested_best_move(head, &_board.food).unwrap_or("");
+    let suggested_best_move = suggested_best_move(
+        head,
+        &_board.food,
+        &_board.hazards,
+        &_board.snakes,
+        &you.body,
+        _board,
+    );
     info!("suggested_best_move : {:?}", suggested_best_move);
     // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
@@ -240,9 +222,16 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
 
-    let mut chosen = "down"; // default down
-    if !suggested_best_move.eq_ignore_ascii_case("") && safe_moves.contains(&suggested_best_move) {
-        chosen = suggested_best_move;
+    let mut chosen = "down";
+    // default down
+    if suggested_best_move.is_some() {
+        let suggested_moves = suggested_best_move.unwrap();
+        for moves in suggested_moves {
+            if safe_moves.contains(&moves) {
+                chosen = moves;
+                break;
+            }
+        }
     } else if safe_moves.len() > 0 {
         chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
     }
@@ -255,16 +244,4 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     info!("Logic took {}ns", duration.as_nanos());
     info!("MOVE {}: {}", turn, chosen);
     return json!({ "move": chosen });
-}
-
-impl Coord {
-    fn successors(&self) -> Vec<Coord> {
-        let &Coord { x, y } = self;
-        vec![
-            Coord { x: x + 1, y: y },
-            Coord { x: x - 1, y: y },
-            Coord { x: x, y: y + 1 },
-            Coord { x: x, y: y - 1 },
-        ]
-    }
 }

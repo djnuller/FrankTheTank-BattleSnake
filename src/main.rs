@@ -4,64 +4,12 @@ extern crate rocket;
 use log::info;
 use rocket::fairing::AdHoc;
 use rocket::http::Status;
-use rocket::serde::{json::Json, Deserialize};
-use serde::Serialize;
+use rocket::serde::json::Json;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::env;
 
+use starter_snake_rust::GameState;
 mod logic;
-
-// API and Response Objects
-// See https://docs.battlesnake.com/api
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Game {
-    id: String,
-    ruleset: HashMap<String, Value>,
-    timeout: i32,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Board {
-    height: i32,
-    width: i32,
-    food: Vec<Coord>,
-    snakes: Vec<Battlesnake>,
-    hazards: Vec<Coord>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Battlesnake {
-    id: String,
-    name: String,
-    health: i32,
-    body: Vec<Coord>,
-    head: Coord,
-    length: i32,
-    latency: String,
-    shout: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Eq, Hash, Clone, Copy)]
-pub struct Coord {
-    x: i32,
-    y: i32,
-}
-
-impl PartialEq for Coord {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct GameState {
-    game: Game,
-    turn: i32,
-    board: Board,
-    you: Battlesnake,
-}
 
 #[get("/")]
 fn handle_index() -> Json<Value> {
