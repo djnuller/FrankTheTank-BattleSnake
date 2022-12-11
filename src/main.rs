@@ -54,7 +54,11 @@ fn rocket() -> _ {
     }
 
     if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
+        env::set_var("RUST_LOG", "debug");
+    }
+
+    if let Ok(log_level) = env::var("log_level") {
+        env::set_var("RUST_LOG", &log_level);
     }
 
     env_logger::init();

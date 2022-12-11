@@ -1,4 +1,3 @@
-use log::info;
 use rocket::serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -95,82 +94,20 @@ impl Coord {
         Coord::prevent_hazards(self, hazards, &mut is_move_safe);
         Coord::prevent_self_destruction(self, body, &mut is_move_safe);
 
-        // Coord::get_succesors(&self, hazards, battlesnakes, body, _board)
-        is_move_safe
+        let moves = is_move_safe
             .into_iter()
-            .filter(|&(_, v)| v)
-            .map(|(k, _)| (Coord::get_coord_from_string(self, k), 1))
-            .collect()
+            .map(|(k, v)| {
+                (
+                    Coord::get_coord_from_string(self, k),
+                    if v { 1 } else { 999 },
+                )
+            })
+            .collect();
+        moves
     }
 
     pub fn distance(&self, other: &Coord) -> usize {
         ((self.x - other.x).abs() + (self.y - other.y).abs()) as usize
-    }
-
-    pub fn get_succesors(
-        &self,
-        hazards: &Vec<Coord>,
-        battlesnakes: &Vec<Battlesnake>,
-        body: &Vec<Coord>,
-        _board: &Board,
-    ) -> Vec<Coord> {
-        let mut successors = Vec::new();
-        for dx in 0..8 {
-            for dy in 0..8 {
-                // Omit diagonal moves (and moving to the same position)
-                if (dx + dy) != 1 {
-                    continue;
-                }
-                let new_position = &Coord {
-                    x: self.x + dx,
-                    y: self.y + dy,
-                };
-                if new_position.x < 0
-                    || new_position.x >= _board.width
-                    || new_position.y < 0
-                    || new_position.y >= _board.height
-                {
-                    continue;
-                }
-                let mut is_move_safe: HashMap<_, _> = vec![
-                    ("up", true),
-                    ("down", true),
-                    ("left", true),
-                    ("right", true),
-                ]
-                .into_iter()
-                .collect();
-
-                Coord::prevent_walls(new_position, &_board, &mut is_move_safe);
-                Coord::prevent_other_snakes(new_position, battlesnakes, &mut is_move_safe);
-                Coord::prevent_hazards(new_position, hazards, &mut is_move_safe);
-                Coord::prevent_self_destruction(new_position, body, &mut is_move_safe);
-
-                if is_move_safe
-                    .iter()
-                    .filter(|&(_, v)| *v)
-                    .map(|(k, _)| k)
-                    .collect::<Vec<_>>()
-                    .is_empty()
-                {
-                    info!("Empty go further!");
-                    continue;
-                }
-
-                let safe_coords: Vec<Coord> = is_move_safe
-                    .into_iter()
-                    .filter(|&(_, v)| v)
-                    .map(|(k, _)| Coord::get_coord_from_string(self, k))
-                    .collect::<Vec<Coord>>();
-                if safe_coords.len() > 0 {
-                    successors.push(Coord {
-                        x: new_position.x,
-                        y: new_position.y,
-                    });
-                }
-            }
-        }
-        successors
     }
 
     pub fn prevent_walls(&self, _board: &Board, is_move_safe: &mut HashMap<&str, bool>) {
