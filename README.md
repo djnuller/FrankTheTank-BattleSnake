@@ -1,36 +1,37 @@
 ```
-use pathfinding::prelude::astar;
-use std::collections::HashMap;
-use std::hash::Hash;
+fn predict_future_you_coordinates(board: &Board, start: &Coord, goal: &Coord, you: &Vec<Coord>) -> Vec<Coord> {
+    // Calculate the shortest path from start to goal using the astar algorithm
+    let path = astar(
+        &start,
+        |c| neighbors(c),
+        |c| cost(c, goal),
+        |c| c == goal,
+    );
 
-fn pathfinding(snake: VecDeque<(usize, usize)>, board: [[i32; 10]; 10]) -> usize {
-    // Create a closure for the A* heuristic function
-    let heuristic = |a: &(usize, usize), b: &(usize, usize)| -> u64 {
-        (9 - a.0).abs() as u64 + (9 - a.1).abs() as u64
-    };
+    // If the shortest path could not be found, return an empty list of coordinates
+    if path.is_none() {
+        return Vec::new();
+    }
 
-    // Create a closure for the A* neighbor function
-    let neighbor = |&(x, y): &(usize, usize)| -> Vec<((usize, usize), u64)> {
-        let mut neighbors = Vec::new();
-        for i in -1..=1 {
-            for j in -1..=1 {
-                let a = x as i32 + i;
-                let b = y as i32 + j;
-                if a >= 0 && a < 10 && b >= 0 && b < 10 && board[a as usize][b as usize] != 1 {
-                    let neighbor = (a as usize, b as usize);
-                    neighbors.push((neighbor, 1));
-                }
-            }
+    let path = path.unwrap();
+    let mut future_you_coordinates = Vec::new();
+
+    // Add the current "you" coordinates to the list of future coordinates
+    future_you_coordinates.push(you);
+
+    // For each coordinate in the path, starting from the second coordinate,
+    // move "you" to that coordinate and add it to the list of future coordinates
+    for i in 1..path.len() {
+        let next_coord = path[i];
+        let mut new_you = Vec::new();
+        new_you.push(next_coord);
+        for coord in you.iter().skip(1) {
+            new_you.push(coord);
         }
-        neighbors
-    };
+        future_you_coordinates.push(new_you);
+    }
 
-    // Perform the A* search
-    let initial_pos = snake[0];
-    let goal = (9, 9);
-    let path = astar(&initial_pos, |p| neighbor(p), |p| p == goal, |p| heuristic(p, &goal));
-
-    // Return the length of the longest path to food
-    path.map(|(path, _)| path.len()).unwrap_or(0)
+    // Return the list of future "you" coordinates
+    future_you_coordinates
 }
 ```

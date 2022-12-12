@@ -142,7 +142,7 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     body.pop();
     let head = &body[0]; // Coordinates of your head
     let neck = &body[1]; // Coordinates of your "neck"
-    let health = &you.health;
+    // let health = &you.health;
 
     let _snakes = &_board
         .snakes
@@ -232,6 +232,7 @@ fn find_path(
         neighbors
             .into_iter()
             .filter(|c| !obstacles.contains(c))
+            .filter(|c| c.x >= 0 && c.x < board.width - 1 && c.y >= 0 && c.y < board.height - 1)
             .map(|p| (p, 1 as usize))
             .collect()
     };
